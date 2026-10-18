@@ -89,11 +89,24 @@ class Kernels(
         return pipeline
     }
 
+    fun loadPipelineWithConstants(
+        device: Device,
+        source: Source,
+        name: String,
+        constants: ConstantValues? = null,
+    ): ComputePipeline = loadPipelineWithConstants(device, source, KernelName.from(name), constants)
+
     fun loadPipeline(
         device: Device,
         source: Source,
         name: String,
     ): ComputePipeline = loadPipelineWithConstants(device, source, KernelName.from(name), null)
+
+    fun loadPipeline(
+        device: Device,
+        source: Source,
+        name: KernelName,
+    ): ComputePipeline = loadPipelineWithConstants(device, source, name, null)
 
     companion object {
         fun default(): Kernels = Kernels()

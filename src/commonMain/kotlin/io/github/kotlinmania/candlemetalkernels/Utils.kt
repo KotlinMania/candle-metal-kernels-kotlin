@@ -132,8 +132,6 @@ class CommandsGuardProvider(
 }
 
 class RwLockGuard<T>(val targetVal: T) {
-    typealias Target = T
-
     fun deref(): T = targetVal
 
     companion object {
