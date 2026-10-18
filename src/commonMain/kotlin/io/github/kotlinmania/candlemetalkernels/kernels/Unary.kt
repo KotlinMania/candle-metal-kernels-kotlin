@@ -3,7 +3,6 @@ package io.github.kotlinmania.candlemetalkernels.kernels
 
 import io.github.kotlinmania.candlemetalkernels.BufferOffset
 import io.github.kotlinmania.candlemetalkernels.ComputeCommandEncoderProvider
-import io.github.kotlinmania.candlemetalkernels.EncoderParam
 import io.github.kotlinmania.candlemetalkernels.EncoderProvider
 import io.github.kotlinmania.candlemetalkernels.Kernels
 import io.github.kotlinmania.candlemetalkernels.Output

@@ -1,19 +1,25 @@
 // port-lint: source metal/encoder.rs
 package io.github.kotlinmania.candlemetalkernels.metal
 
-data class MTLSize(val width: Long, val height: Long, val depth: Long)
+import io.github.kotlinmania.candlemetalkernels.EncoderProvider
 
-typealias PrevCeOutputs = MutableMap<Long, Fence>
+data class MTLSize(
+    val width: Long,
+    val height: Long,
+    val depth: Long,
+)
 
-class EncoderState(
-    val prevOutputs: MutableSet<Long> = mutableSetOf(),
-    val nextOutputs: MutableSet<Long> = mutableSetOf(),
-    val prevInputs: MutableSet<Long> = mutableSetOf(),
-    val nextInputs: MutableSet<Long> = mutableSetOf(),
-    var needsBarrier: Boolean = false,
-    val allInputs: MutableSet<Long> = mutableSetOf(),
-    val allOutputs: MutableSet<Long> = mutableSetOf(),
-) {
+internal typealias PrevCeOutputs = MutableMap<Long, Fence>
+
+internal class EncoderState {
+    val prevOutputs: MutableSet<Long> = mutableSetOf()
+    val nextOutputs: MutableSet<Long> = mutableSetOf()
+    val prevInputs: MutableSet<Long> = mutableSetOf()
+    val nextInputs: MutableSet<Long> = mutableSetOf()
+    var needsBarrier: Boolean = false
+    val allInputs: MutableSet<Long> = mutableSetOf()
+    val allOutputs: MutableSet<Long> = mutableSetOf()
+
     companion object {
         fun new(): EncoderState = EncoderState()
     }
@@ -26,19 +32,27 @@ class DebugGroupGuard(
     fun drop() {}
 }
 
-class ComputeCommandEncoder(
-    val state: EncoderState = EncoderState.new(),
-    val fence: Fence? = null,
-    var label: String? = null,
-    var currentPipeline: ComputePipeline? = null,
-) {
+class ComputeCommandEncoder internal constructor(
+    internal val state: EncoderState = EncoderState.new(),
+    internal val fence: Fence? = null,
+    private var labelVal: String? = null,
+    internal var currentPipeline: ComputePipeline? = null,
+) : EncoderProvider {
+    fun label(): String? = labelVal
+
+    override fun encoder(): ComputeCommandEncoder = this
+
     fun asRef(): ComputeCommandEncoder = this
 
     fun setThreadgroupMemoryLength(length: Long, index: Long) {}
 
-    fun dispatchThreads(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) {}
+    fun dispatchThreads(threadsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) {
+        autoBarrier()
+    }
 
-    fun dispatchThreadGroups(threadgroupsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) {}
+    fun dispatchThreadGroups(threadgroupsPerGrid: MTLSize, threadsPerThreadgroup: MTLSize) {
+        autoBarrier()
+    }
 
     private fun autoBarrier() {}
 
@@ -80,26 +94,36 @@ class ComputeCommandEncoder(
     }
 
     fun setLabel(label: String) {
-        this.label = label
+        this.labelVal = label
     }
 
     fun debugGroup(label: String): DebugGroupGuard = DebugGroupGuard(this, label)
 
-    private fun drop() {
+    fun drop() {
         endEncoding()
     }
 
     companion object {
-        fun new(state: EncoderState = EncoderState.new(), fence: Fence? = null): ComputeCommandEncoder =
+        fun new(fence: Fence? = null): ComputeCommandEncoder =
+            ComputeCommandEncoder(EncoderState.new(), fence)
+
+        internal fun new(state: EncoderState, fence: Fence? = null): ComputeCommandEncoder =
             ComputeCommandEncoder(state, fence)
     }
 }
 
-class BlitCommandEncoder(
-    val fence: Fence? = null,
-    val prevCeOutputs: PrevCeOutputs? = null,
-    var label: String? = null,
+data class BufferRange(
+    val start: Long,
+    val length: Long,
+)
+
+class BlitCommandEncoder internal constructor(
+    internal val fence: Fence? = null,
+    internal val prevCeOutputs: PrevCeOutputs? = null,
+    private var labelVal: String? = null,
 ) {
+    fun label(): String? = labelVal
+
     fun asRef(): BlitCommandEncoder = this
 
     fun waitForFence(fence: Fence) {}
@@ -109,7 +133,7 @@ class BlitCommandEncoder(
     fun endEncoding() {}
 
     fun setLabel(label: String) {
-        this.label = label
+        this.labelVal = label
     }
 
     fun copyFromBuffer(
@@ -129,10 +153,10 @@ class BlitCommandEncoder(
         }
     }
 
-    fun fillBuffer(buffer: Buffer, range: Pair<Long, Long>, value: UByte) {
+    fun fillBuffer(buffer: Buffer, range: BufferRange, value: UByte) {
         val data = buffer.data()
-        val start = range.first.toInt()
-        val len = range.second.toInt()
+        val start = range.start.toInt()
+        val len = range.length.toInt()
         val b = value.toByte()
         val end = minOf(data.size, start + len)
         for (i in start until end) {
@@ -140,8 +164,12 @@ class BlitCommandEncoder(
         }
     }
 
+    fun fillBuffer(buffer: Buffer, range: Pair<Long, Long>, value: UByte) {
+        fillBuffer(buffer, BufferRange(range.first, range.second), value)
+    }
+
     companion object {
-        fun new(fence: Fence? = null, prevCeOutputs: PrevCeOutputs? = null): BlitCommandEncoder =
+        internal fun new(fence: Fence? = null, prevCeOutputs: PrevCeOutputs? = null): BlitCommandEncoder =
             BlitCommandEncoder(fence, prevCeOutputs)
     }
 }

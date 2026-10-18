@@ -131,7 +131,9 @@ class CommandsGuardProvider(
     override fun encoder(): ComputeCommandEncoder = guard.asRef()
 }
 
-class RwLockGuard<T>(val targetVal: T) {
+class RwLockGuard<T>(
+    val targetVal: T,
+) {
     fun deref(): T = targetVal
 
     companion object {
@@ -139,9 +141,4 @@ class RwLockGuard<T>(val targetVal: T) {
     }
 }
 
-private fun isTruthy(s: String): Boolean = when (s.lowercase()) {
-    "true", "t", "yes", "y", "1" -> true
-    else -> false
-}
-
-fun getEnvBool(key: String, default: Boolean): Boolean = default
+internal fun getEnvBool(key: String, defaultValue: Boolean): Boolean = defaultValue

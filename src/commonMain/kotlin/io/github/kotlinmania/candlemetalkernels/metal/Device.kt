@@ -61,13 +61,14 @@ class Device(
 
     fun architectureName(): String = "applegpu_g14g"
 
-    fun deviceType(): MetalDeviceType = when (architectureName().lastOrNull()) {
-        'p' -> MetalDeviceType.Phone
-        'g' -> MetalDeviceType.BasePro
-        's' -> MetalDeviceType.Max
-        'd' -> MetalDeviceType.Ultra
-        else -> MetalDeviceType.Medium
-    }
+    fun deviceType(): MetalDeviceType =
+        when (architectureName().lastOrNull()) {
+            'p' -> MetalDeviceType.Phone
+            'g' -> MetalDeviceType.BasePro
+            's' -> MetalDeviceType.Max
+            'd' -> MetalDeviceType.Ultra
+            else -> MetalDeviceType.Medium
+        }
 
     companion object {
         fun new(raw: Any? = null): Device = Device(raw)

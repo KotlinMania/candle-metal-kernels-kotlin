@@ -53,10 +53,11 @@ fun callReduceContiguous(
     setParam(encoder, 4L, input)
     setParam(encoder, 5L, Output.new(output))
 
-    val width = minOf(
-        pipeline.maxTotalThreadsPerThreadgroup(),
-        nextPowerOfTwo(workPerThreadgroup / 2L),
-    )
+    val width =
+        minOf(
+            pipeline.maxTotalThreadsPerThreadgroup(),
+            nextPowerOfTwo(workPerThreadgroup / 2L),
+        )
     encoder.dispatchThreadGroups(
         MTLSize(outLength, 1L, 1L),
         MTLSize(width, 1L, 1L),
@@ -94,10 +95,11 @@ fun callReduceStrided(
     setParam(encoder, 5L, input)
     setParam(encoder, 6L, Output.new(output))
 
-    val width = minOf(
-        pipeline.maxTotalThreadsPerThreadgroup(),
-        nextPowerOfTwo(workPerThreadgroup / 2L),
-    )
+    val width =
+        minOf(
+            pipeline.maxTotalThreadsPerThreadgroup(),
+            nextPowerOfTwo(workPerThreadgroup / 2L),
+        )
     encoder.dispatchThreadGroups(
         MTLSize(outLength, 1L, 1L),
         MTLSize(width, 1L, 1L),
@@ -128,10 +130,11 @@ fun callLastSoftmax(
 
     val outLength = length / workPerThreadgroup
     val threadGroupCount = MTLSize(outLength, 1L, 1L)
-    val width = minOf(
-        pipeline.maxTotalThreadsPerThreadgroup(),
-        nextPowerOfTwo(workPerThreadgroup / 2L),
-    )
+    val width =
+        minOf(
+            pipeline.maxTotalThreadsPerThreadgroup(),
+            nextPowerOfTwo(workPerThreadgroup / 2L),
+        )
     val threadGroupSize = MTLSize(width, 1L, 1L)
     encoder.dispatchThreadGroups(threadGroupCount, threadGroupSize)
 }
@@ -165,10 +168,11 @@ fun callRmsNorm(
     val workPerThreadgroup = elementsToSum
     val outLength = length / workPerThreadgroup
     val threadGroupCount = MTLSize(outLength, 1L, 1L)
-    val width = minOf(
-        pipeline.maxTotalThreadsPerThreadgroup(),
-        nextPowerOfTwo(workPerThreadgroup / 2L),
-    )
+    val width =
+        minOf(
+            pipeline.maxTotalThreadsPerThreadgroup(),
+            nextPowerOfTwo(workPerThreadgroup / 2L),
+        )
     val threadGroupSize = MTLSize(width, 1L, 1L)
     encoder.dispatchThreadGroups(threadGroupCount, threadGroupSize)
 }
@@ -205,10 +209,11 @@ fun callLayerNorm(
     val workPerThreadgroup = elementsToSum
     val outLength = length / workPerThreadgroup
     val threadGroupCount = MTLSize(outLength, 1L, 1L)
-    val width = minOf(
-        pipeline.maxTotalThreadsPerThreadgroup(),
-        nextPowerOfTwo(workPerThreadgroup / 2L),
-    )
+    val width =
+        minOf(
+            pipeline.maxTotalThreadsPerThreadgroup(),
+            nextPowerOfTwo(workPerThreadgroup / 2L),
+        )
     val threadGroupSize = MTLSize(width, 1L, 1L)
     encoder.dispatchThreadGroups(threadGroupCount, threadGroupSize)
 }

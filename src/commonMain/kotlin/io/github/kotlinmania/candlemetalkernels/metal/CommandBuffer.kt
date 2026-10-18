@@ -11,9 +11,11 @@ enum class MTLCommandBufferStatus {
 }
 
 class CommandBuffer(
-    var label: String? = null,
+    var labelVal: String? = null,
     var statusVal: MTLCommandBufferStatus = MTLCommandBufferStatus.NotEnqueued,
 ) {
+    fun label(): String? = labelVal
+
     fun asRef(): CommandBuffer = this
 
     fun computeCommandEncoder(fence: Fence): ComputeCommandEncoder =
@@ -34,7 +36,7 @@ class CommandBuffer(
     }
 
     fun setLabel(label: String) {
-        this.label = label
+        this.labelVal = label
     }
 
     fun status(): MTLCommandBufferStatus = statusVal

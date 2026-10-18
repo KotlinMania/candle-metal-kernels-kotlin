@@ -33,13 +33,17 @@ fun callWhereCond(
     rightIsContiguous: Boolean,
     output: Buffer,
 ) {
-    val constants = ConstantValues.new(
-        listOf(
-            Pair(0L, Value.Bool(condIsContiguous)),
-            Pair(1L, Value.Bool(leftIsContiguous)),
-            Pair(2L, Value.Bool(rightIsContiguous)),
+    val constants =
+        ConstantValues.new(
+            listOf(
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(0L, Value.Bool(condIsContiguous)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(1L, Value.Bool(leftIsContiguous)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(2L, Value.Bool(rightIsContiguous)),
+            ),
         )
-    )
     val pipeline = kernels.loadPipelineWithConstants(device, Source.Ternary, name, constants)
 
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()

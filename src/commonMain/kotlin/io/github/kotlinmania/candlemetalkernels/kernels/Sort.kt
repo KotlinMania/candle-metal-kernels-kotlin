@@ -42,14 +42,15 @@ fun callArgSort(
     encoder.dispatchThreadGroups(threadGroupCount, threadGroupSize)
 }
 
-private fun mlxDTypeStr(dtype: DType): String = when (dtype) {
-    DType.U8 -> "uint8"
-    DType.U32 -> "uint32"
-    DType.I64 -> "int64"
-    DType.F16 -> "float16"
-    DType.BF16 -> "bfloat16"
-    DType.F32 -> "float32"
-}
+private fun mlxDTypeStr(dtype: DType): String =
+    when (dtype) {
+        DType.U8 -> "uint8"
+        DType.U32 -> "uint32"
+        DType.I64 -> "int64"
+        DType.F16 -> "float16"
+        DType.BF16 -> "bfloat16"
+        DType.F32 -> "float32"
+    }
 
 private fun multiBlockSort(
     device: Device,
@@ -82,7 +83,7 @@ private fun multiBlockSort(
 
     // Do blockwise sort
     run {
-        val name = "sort_mbsort_${dtypeStr}_uint32_bn${bn}_tn${tn}"
+        val name = "sort_mbsort_${dtypeStr}_uint32_bn${bn}_tn$tn"
         val pipeline = kernels.loadPipeline(device, Source.MlxSort, name)
         encoder.setComputePipelineState(pipeline)
         encoder.debugGroup("mlx_arg_sort multi_block block_sort $dtypeStr nrows=$nrows ncols=$ncols blocks=$nblocks")
@@ -104,19 +105,21 @@ private fun multiBlockSort(
     var ping = false
     var mergeTiles = 2L
     val nThrPerGroup = minOf(nblocks + 1L, 1024L)
-    val partitionName = "partition_mbsort_${dtypeStr}_uint32_bn${bn}_tn${tn}"
-    val mergeName = "merge_mbsort_float32_uint32_bn${bn}_tn${tn}"
+    val partitionName = "partition_mbsort_${dtypeStr}_uint32_bn${bn}_tn$tn"
+    val mergeName = "merge_mbsort_float32_uint32_bn${bn}_tn$tn"
     while (mergeTiles / 2L < nblocks) {
-        val (devValsIn, devValsOut) = if (ping) {
-            Pair(devVals1, devVals0)
-        } else {
-            Pair(devVals0, devVals1)
-        }
-        val (devIdxsIn, devIdxsOut) = if (ping) {
-            Pair(devIdxs1, devIdxs0)
-        } else {
-            Pair(devIdxs0, devIdxs1)
-        }
+        val (devValsIn, devValsOut) =
+            if (ping) {
+                Pair(devVals1, devVals0)
+            } else {
+                Pair(devVals0, devVals1)
+            }
+        val (devIdxsIn, devIdxsOut) =
+            if (ping) {
+                Pair(devIdxs1, devIdxs0)
+            } else {
+                Pair(devIdxs0, devIdxs1)
+            }
         ping = !ping
 
         // Do partition
@@ -159,14 +162,15 @@ private fun multiBlockSort(
     }
 
     val devIdxsOut = if (ping) devIdxs1 else devIdxs0
-    val copyKernel = when (dtype) {
-        DType.U8 -> Copy2d.U8
-        DType.U32 -> Copy2d.U32
-        DType.I64 -> Copy2d.I64
-        DType.BF16 -> Copy2d.BFLOAT
-        DType.F16 -> Copy2d.HALF
-        DType.F32 -> Copy2d.FLOAT
-    }
+    val copyKernel =
+        when (dtype) {
+            DType.U8 -> Copy2d.U8
+            DType.U32 -> Copy2d.U32
+            DType.I64 -> Copy2d.I64
+            DType.BF16 -> Copy2d.BFLOAT
+            DType.F16 -> Copy2d.HALF
+            DType.F32 -> Copy2d.FLOAT
+        }
     callCopy2d(
         device,
         encoder,
@@ -196,7 +200,7 @@ private fun blockSort(
     dst: Buffer,
 ) {
     val dtypeStr = mlxDTypeStr(dtype)
-    val name = "carg_block_sort_${dtypeStr}_uint32_bn${bn}_tn${tn}"
+    val name = "carg_block_sort_${dtypeStr}_uint32_bn${bn}_tn$tn"
     val pipeline = kernels.loadPipeline(device, Source.MlxSort, name)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
     encoder.setComputePipelineState(pipeline)
@@ -226,11 +230,12 @@ fun callMlxArgSort(
 ) {
     val tn = 8L
     val divCeil = (ncols + tn - 1L) / tn
-    val bn = when {
-        divCeil >= 257L && dtype.sizeInBytes() <= 4L -> 512L
-        divCeil >= 129L -> 256L
-        else -> 128L
-    }
+    val bn =
+        when {
+            divCeil >= 257L && dtype.sizeInBytes() <= 4L -> 512L
+            divCeil >= 129L -> 256L
+            else -> 128L
+        }
     val nPerBlock = bn * tn
     val nBlocks = (ncols + nPerBlock - 1L) / nPerBlock
     if (nBlocks > 1L) {

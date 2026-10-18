@@ -17,38 +17,56 @@ class FunctionConstantValues {
 
     companion object {
         fun new(): FunctionConstantValues = FunctionConstantValues()
+
         fun default(): FunctionConstantValues = FunctionConstantValues()
     }
 }
 
 sealed class Value {
-    data class USize(val value: Long) : Value()
-    data class Bool(val value: Boolean) : Value()
-    data class F32(val value: Float) : Value()
-    data class U16(val value: UShort) : Value()
+    data class USize(
+        val value: Long,
+    ) : Value()
 
-    fun dataType(): MTLDataType = when (this) {
-        is USize -> MTLDataType.ULong
-        is F32 -> MTLDataType.Float
-        is U16 -> MTLDataType.UShort
-        is Bool -> MTLDataType.Bool
-    }
+    data class Bool(
+        val value: Boolean,
+    ) : Value()
+
+    data class F32(
+        val value: Float,
+    ) : Value()
+
+    data class U16(
+        val value: UShort,
+    ) : Value()
+
+    fun dataType(): MTLDataType =
+        when (this) {
+            is USize -> MTLDataType.ULong
+            is F32 -> MTLDataType.Float
+            is U16 -> MTLDataType.UShort
+            is Bool -> MTLDataType.Bool
+        }
 
     fun hash(): Int = hashCode()
 }
 
+data class ConstantValue(
+    val index: Long,
+    val value: Value,
+)
+
 class ConstantValues(
-    val values: List<Pair<Long, Value>>,
+    val values: List<ConstantValue>,
 ) {
     fun functionConstantValues(): FunctionConstantValues {
         val f = FunctionConstantValues.new()
-        for ((index, value) in values) {
-            val ty = value.dataType()
-            when (value) {
-                is Value.USize -> f.setConstantValueAtIndex(value.value, ty, index)
-                is Value.F32 -> f.setConstantValueAtIndex(value.value, ty, index)
-                is Value.U16 -> f.setConstantValueAtIndex(value.value, ty, index)
-                is Value.Bool -> f.setConstantValueAtIndex(value.value, ty, index)
+        for (item in values) {
+            val ty = item.value.dataType()
+            when (val value = item.value) {
+                is Value.USize -> f.setConstantValueAtIndex(value.value, ty, item.index)
+                is Value.F32 -> f.setConstantValueAtIndex(value.value, ty, item.index)
+                is Value.U16 -> f.setConstantValueAtIndex(value.value, ty, item.index)
+                is Value.Bool -> f.setConstantValueAtIndex(value.value, ty, item.index)
             }
         }
         return f
@@ -63,7 +81,7 @@ class ConstantValues(
     override fun hashCode(): Int = values.hashCode()
 
     companion object {
-        fun new(values: List<Pair<Long, Value>>): ConstantValues = ConstantValues(values)
+        fun new(values: List<ConstantValue>): ConstantValues = ConstantValues(values)
     }
 }
 

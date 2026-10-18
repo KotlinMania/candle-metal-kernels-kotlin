@@ -3,15 +3,12 @@ package io.github.kotlinmania.candlemetalkernels.kernels
 
 import io.github.kotlinmania.candlemetalkernels.BufferOffset
 import io.github.kotlinmania.candlemetalkernels.EncoderProvider
-import io.github.kotlinmania.candlemetalkernels.KernelName
 import io.github.kotlinmania.candlemetalkernels.Kernels
 import io.github.kotlinmania.candlemetalkernels.Output
 import io.github.kotlinmania.candlemetalkernels.Source
-import io.github.kotlinmania.candlemetalkernels.getBlockDims
 import io.github.kotlinmania.candlemetalkernels.getTileSize
 import io.github.kotlinmania.candlemetalkernels.linearSplit
 import io.github.kotlinmania.candlemetalkernels.metal.Buffer
-import io.github.kotlinmania.candlemetalkernels.metal.ComputeCommandEncoder
 import io.github.kotlinmania.candlemetalkernels.metal.Device
 import io.github.kotlinmania.candlemetalkernels.setParam
 

@@ -1,9 +1,14 @@
 // port-lint: source kernels/macros.rs
 package io.github.kotlinmania.candlemetalkernels.kernels
 
-data class Kernel(val name: String)
+data class Kernel(
+    val name: String,
+)
 
-class OpKernelGroup(prefix: String, suffix: String = "") {
+class OpKernelGroup(
+    prefix: String,
+    suffix: String = "",
+) {
     val FLOAT: Kernel = Kernel("${prefix}_f32$suffix")
     val HALF: Kernel = Kernel("${prefix}_f16$suffix")
     val BFLOAT: Kernel = Kernel("${prefix}_bf16$suffix")

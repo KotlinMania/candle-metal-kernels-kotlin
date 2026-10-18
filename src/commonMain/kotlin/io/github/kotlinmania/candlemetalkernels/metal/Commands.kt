@@ -1,6 +1,7 @@
 // port-lint: source metal/commands.rs
 package io.github.kotlinmania.candlemetalkernels.metal
 
+import io.github.kotlinmania.candlemetalkernels.EncoderProvider
 import io.github.kotlinmania.candlemetalkernels.MetalKernelError
 
 const val DEFAULT_CANDLE_METAL_COMPUTE_PER_BUFFER: Long = 50L
@@ -24,7 +25,9 @@ fun createCommandBuffer(commandQueue: CommandQueue): CommandBuffer = CommandBuff
 
 class CommandsGuard(
     val currentEncoder: ComputeCommandEncoder,
-) {
+) : EncoderProvider {
+    override fun encoder(): ComputeCommandEncoder = currentEncoder
+
     fun asRef(): ComputeCommandEncoder = currentEncoder
 
     fun setLabel(label: String) {
@@ -59,6 +62,10 @@ class BlitCommandsGuard(
         asMut().copyFromBuffer(srcBuffer, srcOffset, dstBuffer, dstOffset, size)
     }
 
+    fun fillBuffer(buffer: Buffer, range: BufferRange, value: UByte) {
+        asMut().fillBuffer(buffer, range, value)
+    }
+
     fun fillBuffer(buffer: Buffer, range: Pair<Long, Long>, value: UByte) {
         asMut().fillBuffer(buffer, range, value)
     }
@@ -68,7 +75,7 @@ class BlitCommandsGuard(
     }
 }
 
-class EntryState(
+internal class EntryState(
     var current: CommandBuffer,
     val inFlight: MutableList<CommandBuffer> = mutableListOf(),
     var currentEncoder: ComputeCommandEncoder? = null,
@@ -160,6 +167,7 @@ class Commands(
             MTLCommandBufferStatus.NotEnqueued, MTLCommandBufferStatus.Enqueued -> {
                 state.current.commit()
             }
+
             else -> {}
         }
         val newCb = createCommandBuffer(commandQueue)
@@ -175,10 +183,13 @@ class Commands(
                 cb.commit()
                 cb.waitUntilCompleted()
             }
+
             MTLCommandBufferStatus.Committed, MTLCommandBufferStatus.Scheduled -> {
                 cb.waitUntilCompleted()
             }
+
             MTLCommandBufferStatus.Completed -> {}
+
             MTLCommandBufferStatus.Error -> {
                 val msg = cb.error() ?: "unknown error"
                 throw MetalKernelError.CommandBufferError(msg)

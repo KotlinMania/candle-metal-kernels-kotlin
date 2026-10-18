@@ -10,6 +10,7 @@ import io.github.kotlinmania.candlemetalkernels.Output
 import io.github.kotlinmania.candlemetalkernels.Source
 import io.github.kotlinmania.candlemetalkernels.metal.Buffer
 import io.github.kotlinmania.candlemetalkernels.metal.ComputeCommandEncoder
+import io.github.kotlinmania.candlemetalkernels.metal.ConstantValue
 import io.github.kotlinmania.candlemetalkernels.metal.ConstantValues
 import io.github.kotlinmania.candlemetalkernels.metal.Device
 import io.github.kotlinmania.candlemetalkernels.metal.MTLSize
@@ -89,19 +90,24 @@ fun callSdpaFull(
         )
     }
 
-    val (bq, bk, wm, wn) = if (bd == 512L) {
-        if (itype == SdpaDType.F32) {
-            throw MetalKernelError.SdpaHeadSizeMismatch(
-                variation = "full (f32 unsupported at head_dim=512)",
-                got = bd,
-                expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L),
-            )
+    val config =
+        if (bd == 512L) {
+            if (itype == SdpaDType.F32) {
+                throw MetalKernelError.SdpaHeadSizeMismatch(
+                    variation = "full (f32 unsupported at head_dim=512)",
+                    got = bd,
+                    expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L),
+                )
+            }
+            listOf(8L, 8L, 1L, 1L)
+        } else {
+            val bkVal = if (bd < 128L) 32L else 16L
+            listOf(32L, bkVal, 4L, 1L)
         }
-        listOf(8L, 8L, 1L, 1L)
-    } else {
-        val bkVal = if (bd < 128L) 32L else 16L
-        listOf(32L, bkVal, 4L, 1L)
-    }
+    val bq = config[0]
+    val bk = config[1]
+    val wm = config[2]
+    val wn = config[3]
 
     val b = qShape[0]
     val h = qShape[1]
@@ -117,27 +123,30 @@ fun callSdpaFull(
 
     val effectiveDoCausal = doCausal && !hasMask
 
-    val itypeRepr = when (itype) {
-        SdpaDType.BF16 -> "bfloat16"
-        SdpaDType.F16 -> "float16"
-        SdpaDType.F32 -> "float32"
-    }
-    val maskRepr = when (maskType) {
-        SdpaDType.BF16 -> "bfloat16"
-        SdpaDType.F16 -> "float16"
-        SdpaDType.F32 -> "float32"
-        null -> itypeRepr
-    }
-    val name = "steel_attention_${itypeRepr}_bq${bq}_bk${bk}_bd${bd}_wm${wm}_wn${wn}_mask${maskRepr}"
+    val itypeRepr =
+        when (itype) {
+            SdpaDType.BF16 -> "bfloat16"
+            SdpaDType.F16 -> "float16"
+            SdpaDType.F32 -> "float32"
+        }
+    val maskRepr =
+        when (maskType) {
+            SdpaDType.BF16 -> "bfloat16"
+            SdpaDType.F16 -> "float16"
+            SdpaDType.F32 -> "float32"
+            null -> itypeRepr
+        }
+    val name = "steel_attention_${itypeRepr}_bq${bq}_bk${bk}_bd${bd}_wm${wm}_wn${wn}_mask$maskRepr"
 
-    val constants = ConstantValues.new(
-        listOf(
-            Pair(200L, Value.Bool(alignQ)),
-            Pair(201L, Value.Bool(alignK)),
-            Pair(300L, Value.Bool(hasMask)),
-            Pair(301L, Value.Bool(effectiveDoCausal)),
+    val constants =
+        ConstantValues.new(
+            listOf(
+                ConstantValue(200L, Value.Bool(alignQ)),
+                ConstantValue(201L, Value.Bool(alignK)),
+                ConstantValue(300L, Value.Bool(hasMask)),
+                ConstantValue(301L, Value.Bool(effectiveDoCausal)),
+            ),
         )
-    )
 
     val pipeline = kernels.loadPipelineWithConstants(device, Source.Sdpa, name, constants)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
@@ -150,33 +159,35 @@ fun callSdpaFull(
     val nqAligned = ql / bq
     val nkAligned = kl / bk
 
-    val params = AttnParams(
-        b = b.toInt(),
-        h = h.toInt(),
-        d = d.toInt(),
-        ql = ql.toInt(),
-        kl = kl.toInt(),
-        gqaFactor = gqaFactor,
-        scale = scale,
-        softcapping = 1.0f,
-        nq = nq.toInt(),
-        nk = nk.toInt(),
-        nqAligned = nqAligned.toInt(),
-        nkAligned = nkAligned.toInt(),
-        qlRem = (ql - nqAligned * bq).toInt(),
-        klRem = (kl - nkAligned * bk).toInt(),
-        qlOff = (kl - ql).toInt(),
-        qStrides = listOf(qStrides[0], qStrides[1], qStrides[2]),
-        kStrides = listOf(kStrides[0], kStrides[1], kStrides[2]),
-        vStrides = listOf(vStrides[0], vStrides[1], vStrides[2]),
-        oStrides = listOf(oStrides[0], oStrides[1], oStrides[2]),
-    )
+    val params =
+        AttnParams(
+            b = b.toInt(),
+            h = h.toInt(),
+            d = d.toInt(),
+            ql = ql.toInt(),
+            kl = kl.toInt(),
+            gqaFactor = gqaFactor,
+            scale = scale,
+            softcapping = 1.0f,
+            nq = nq.toInt(),
+            nk = nk.toInt(),
+            nqAligned = nqAligned.toInt(),
+            nkAligned = nkAligned.toInt(),
+            qlRem = (ql - nqAligned * bq).toInt(),
+            klRem = (kl - nkAligned * bk).toInt(),
+            qlOff = (kl - ql).toInt(),
+            qStrides = listOf(qStrides[0], qStrides[1], qStrides[2]),
+            kStrides = listOf(kStrides[0], kStrides[1], kStrides[2]),
+            vStrides = listOf(vStrides[0], vStrides[1], vStrides[2]),
+            oStrides = listOf(oStrides[0], oStrides[1], oStrides[2]),
+        )
 
     if (maskBuffer != null) {
         val maskStrides = mStrides!!
-        val maskParams = AttnMaskParams(
-            listOf(maskStrides[0], maskStrides[1], maskStrides[2])
-        )
+        val maskParams =
+            AttnMaskParams(
+                listOf(maskStrides[0], maskStrides[1], maskStrides[2]),
+            )
         setParam(encoder, 0L, BufferOffset(qBuffer, qOffset))
         setParam(encoder, 1L, BufferOffset(kBuffer, kOffset))
         setParam(encoder, 2L, BufferOffset(vBuffer, vOffset))
@@ -224,43 +235,64 @@ fun callSdpaVector(
     val kstride = kStride[1]
     val vstride = vStride[1]
 
-    val name = when (Pair(bk, itype)) {
-        Pair(32L, SdpaDType.F16) -> "sdpa_vector_float16_t_32"
-        Pair(64L, SdpaDType.F16) -> "sdpa_vector_float16_t_64"
-        Pair(96L, SdpaDType.F16) -> "sdpa_vector_float16_t_96"
-        Pair(128L, SdpaDType.F16) -> "sdpa_vector_float16_t_128"
-        Pair(256L, SdpaDType.F16) -> "sdpa_vector_float16_t_256"
-        Pair(512L, SdpaDType.F16) -> "sdpa_vector_float16_t_512"
-        Pair(32L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_32"
-        Pair(64L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_64"
-        Pair(96L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_96"
-        Pair(128L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_128"
-        Pair(256L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_256"
-        Pair(512L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_512"
-        Pair(32L, SdpaDType.F32) -> "sdpa_vector_float_32"
-        Pair(64L, SdpaDType.F32) -> "sdpa_vector_float_64"
-        Pair(96L, SdpaDType.F32) -> "sdpa_vector_float_96"
-        Pair(128L, SdpaDType.F32) -> "sdpa_vector_float_128"
-        Pair(256L, SdpaDType.F32) -> "sdpa_vector_float_256"
-        Pair(512L, SdpaDType.F32) -> "sdpa_vector_float_512"
-        else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-            variation = "vector",
-            got = bk,
-            expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-        )
-    }
+    val name =
+        when (Pair(bk, itype)) {
+            Pair(32L, SdpaDType.F16) -> "sdpa_vector_float16_t_32"
 
-    val effectiveAlpha = if (softcapping != 1.0f) {
-        alpha / softcapping
-    } else {
-        alpha
-    }
+            Pair(64L, SdpaDType.F16) -> "sdpa_vector_float16_t_64"
 
-    val constants = ConstantValues.new(
-        listOf(
-            Pair(20L, Value.Bool(false)),
+            Pair(96L, SdpaDType.F16) -> "sdpa_vector_float16_t_96"
+
+            Pair(128L, SdpaDType.F16) -> "sdpa_vector_float16_t_128"
+
+            Pair(256L, SdpaDType.F16) -> "sdpa_vector_float16_t_256"
+
+            Pair(512L, SdpaDType.F16) -> "sdpa_vector_float16_t_512"
+
+            Pair(32L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_32"
+
+            Pair(64L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_64"
+
+            Pair(96L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_96"
+
+            Pair(128L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_128"
+
+            Pair(256L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_256"
+
+            Pair(512L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_512"
+
+            Pair(32L, SdpaDType.F32) -> "sdpa_vector_float_32"
+
+            Pair(64L, SdpaDType.F32) -> "sdpa_vector_float_64"
+
+            Pair(96L, SdpaDType.F32) -> "sdpa_vector_float_96"
+
+            Pair(128L, SdpaDType.F32) -> "sdpa_vector_float_128"
+
+            Pair(256L, SdpaDType.F32) -> "sdpa_vector_float_256"
+
+            Pair(512L, SdpaDType.F32) -> "sdpa_vector_float_512"
+
+            else -> throw MetalKernelError.SdpaHeadSizeMismatch(
+                variation = "vector",
+                got = bk,
+                expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+            )
+        }
+
+    val effectiveAlpha =
+        if (softcapping != 1.0f) {
+            alpha / softcapping
+        } else {
+            alpha
+        }
+
+    val constants =
+        ConstantValues.new(
+            listOf(
+                ConstantValue(20L, Value.Bool(false)),
+            ),
         )
-    )
 
     val pipeline = kernels.loadPipelineWithConstants(device, Source.Sdpa, name, constants)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
@@ -311,31 +343,50 @@ fun callSdpaVector2pass(
 
     // First pass
     run {
-        val namePass1 = when (Pair(bk, itype)) {
-            Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_32"
-            Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_64"
-            Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_96"
-            Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_128"
-            Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_256"
-            Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_512"
-            Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_32"
-            Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_64"
-            Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_96"
-            Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_128"
-            Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_256"
-            Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_512"
-            Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_32"
-            Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_64"
-            Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_96"
-            Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_128"
-            Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_256"
-            Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_512"
-            else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-                variation = "vector_2pass_1",
-                got = bk,
-                expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-            )
-        }
+        val namePass1 =
+            when (Pair(bk, itype)) {
+                Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_32"
+
+                Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_64"
+
+                Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_96"
+
+                Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_128"
+
+                Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_256"
+
+                Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_512"
+
+                Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_32"
+
+                Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_64"
+
+                Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_96"
+
+                Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_128"
+
+                Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_256"
+
+                Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_512"
+
+                Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_32"
+
+                Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_64"
+
+                Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_96"
+
+                Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_128"
+
+                Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_256"
+
+                Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_512"
+
+                else -> throw MetalKernelError.SdpaHeadSizeMismatch(
+                    variation = "vector_2pass_1",
+                    got = bk,
+                    expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+                )
+            }
 
         val gqaFactor = (qShape[1] / kShape[1]).toInt()
         val n = kShape[2].toInt()
@@ -343,17 +394,19 @@ fun callSdpaVector2pass(
         val kstride = kStride[1]
         val vstride = vStride[1]
 
-        val effectiveAlpha = if (softcapping != 1.0f) {
-            alpha / softcapping
-        } else {
-            alpha
-        }
+        val effectiveAlpha =
+            if (softcapping != 1.0f) {
+                alpha / softcapping
+            } else {
+                alpha
+            }
 
-        val constants = ConstantValues.new(
-            listOf(
-                Pair(20L, Value.Bool(false)),
+        val constants =
+            ConstantValues.new(
+                listOf(
+                    ConstantValue(20L, Value.Bool(false)),
+                ),
             )
-        )
 
         val pipeline = kernels.loadPipelineWithConstants(device, Source.Sdpa, namePass1, constants)
         val encoder: ComputeCommandEncoder = ep.encoder().asRef()
@@ -381,31 +434,50 @@ fun callSdpaVector2pass(
 
     // Final pass
     run {
-        val namePass2 = when (Pair(bk, itype)) {
-            Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_32"
-            Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_64"
-            Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_96"
-            Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_128"
-            Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_256"
-            Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_512"
-            Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_32"
-            Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_64"
-            Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_96"
-            Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_128"
-            Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_256"
-            Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_512"
-            Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_32"
-            Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_64"
-            Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_96"
-            Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_128"
-            Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_256"
-            Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_512"
-            else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-                variation = "vector_2pass_2",
-                got = bk,
-                expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-            )
-        }
+        val namePass2 =
+            when (Pair(bk, itype)) {
+                Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_32"
+
+                Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_64"
+
+                Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_96"
+
+                Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_128"
+
+                Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_256"
+
+                Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_512"
+
+                Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_32"
+
+                Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_64"
+
+                Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_96"
+
+                Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_128"
+
+                Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_256"
+
+                Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_512"
+
+                Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_32"
+
+                Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_64"
+
+                Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_96"
+
+                Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_128"
+
+                Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_256"
+
+                Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_512"
+
+                else -> throw MetalKernelError.SdpaHeadSizeMismatch(
+                    variation = "vector_2pass_2",
+                    got = bk,
+                    expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+                )
+            }
 
         val b = qShape[0] * qShape[1]
 

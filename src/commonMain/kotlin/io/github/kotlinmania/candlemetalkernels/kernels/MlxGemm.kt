@@ -37,6 +37,15 @@ data class TileConfig(
     }
 }
 
+data class GemvTileConfig(
+    val bm: Long,
+    val bn: Long,
+    val sm: Long,
+    val sn: Long,
+    val tm: Long,
+    val tn: Long,
+)
+
 val TILE_32_32_16_2_2: TileConfig = TileConfig.new(32L, 32L, 16L, 2L, 2L)
 val TILE_64_64_16_2_2: TileConfig = TileConfig.new(64L, 64L, 16L, 2L, 2L)
 val TILE_64_64_16_1_2: TileConfig = TileConfig.new(64L, 64L, 16L, 1L, 2L)
@@ -70,6 +79,7 @@ fun selectTileConfig(
                 TILE_64_64_16_2_2
             }
         }
+
         MetalDeviceType.Ultra -> {
             if (isLargeMatmul) {
                 if (dtype != GemmDType.F32) {
@@ -99,6 +109,7 @@ fun selectTileConfig(
                 }
             }
         }
+
         MetalDeviceType.Max, MetalDeviceType.Medium -> {
             when (dtype) {
                 GemmDType.F32 -> {
@@ -112,6 +123,7 @@ fun selectTileConfig(
                         TILE_64_64_16_2_2
                     }
                 }
+
                 GemmDType.F16, GemmDType.BF16 -> {
                     if (isLargeMatmul) {
                         if (2L * maxOf(m, n) > k) {
@@ -147,17 +159,19 @@ fun checkBatchCollapse(
         return Triple(b, m, false)
     }
 
-    val aBatchStride = if (lhsStride.size > 2) {
-        lhsStride[lhsStride.size - 3]
-    } else {
-        m * k
-    }
+    val aBatchStride =
+        if (lhsStride.size > 2) {
+            lhsStride[lhsStride.size - 3]
+        } else {
+            m * k
+        }
 
-    val bBatchStride = if (rhsStride.size > 2) {
-        rhsStride[rhsStride.size - 3]
-    } else {
-        0L
-    }
+    val bBatchStride =
+        if (rhsStride.size > 2) {
+            rhsStride[rhsStride.size - 3]
+        } else {
+            0L
+        }
 
     val aContiguous = aBatchStride == m * k
     val bBroadcasted = bBatchStride == 0L
@@ -224,21 +238,23 @@ fun callMlxGemv(
     val lhsM1 = lhsStride[lhsStride.size - 1]
     val lhsM2 = lhsStride[lhsStride.size - 2]
 
-    val (lda, aTrans) = if ((lhsM1 == 1L || k == 1L) && (lhsM2 == k || m == 1L)) {
-        Pair(k.toInt(), false)
-    } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
-        Pair(m.toInt(), true)
-    } else {
-        throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, Triple(m, n, k)).bt()
-    }
+    val (lda, aTrans) =
+        if ((lhsM1 == 1L || k == 1L) && (lhsM2 == k || m == 1L)) {
+            Pair(k.toInt(), false)
+        } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
+            Pair(m.toInt(), true)
+        } else {
+            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+        }
 
-    val (ldb, bTrans) = if ((rhsM1 == 1L || n == 1L) && (rhsM2 == n || k == 1L)) {
-        Pair(n.toInt(), false)
-    } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
-        Pair(k.toInt(), true)
-    } else {
-        throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, Triple(m, n, k)).bt()
-    }
+    val (ldb, bTrans) =
+        if ((rhsM1 == 1L || n == 1L) && (rhsM2 == n || k == 1L)) {
+            Pair(n.toInt(), false)
+        } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
+            Pair(k.toInt(), true)
+        } else {
+            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+        }
 
     val isBMatrix = n != 1L
     val transposeMat = if (isBMatrix) !bTrans else aTrans
@@ -246,58 +262,70 @@ fun callMlxGemv(
     val inVecSize = k
     val outVecSize = if (isBMatrix) n else m
 
-    val (matBuffer, matOffset, vecBuffer, vecOffset) = if (isBMatrix) {
-        listOf(rhsBuffer, rhsOffset, lhsBuffer, lhsOffset)
-    } else {
-        listOf(lhsBuffer, lhsOffset, rhsBuffer, rhsOffset)
-    }
+    val matBuffer = if (isBMatrix) rhsBuffer else lhsBuffer
+    val matOffset = if (isBMatrix) rhsOffset else lhsOffset
+    val vecBuffer = if (isBMatrix) lhsBuffer else rhsBuffer
+    val vecOffset = if (isBMatrix) lhsOffset else rhsOffset
 
-    val vecBatchStride: Long = if (isBMatrix) {
-        if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else k
-    } else {
-        if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else k
-    }
-
-    val matBatchStride: Long = if (isBMatrix) {
-        if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else 0L
-    } else {
-        if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else 0L
-    }
-
-    val (bm, bn, sm, sn, tm, tn) = if (transposeMat) {
-        val (sm, sn) = if (inVecSize >= 8192L && outVecSize >= 2048L) {
-            Pair(4L, 8L)
+    val vecBatchStride: Long =
+        if (isBMatrix) {
+            if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else k
         } else {
-            Pair(8L, 4L)
+            if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else k
         }
-        val bn = if (outVecSize >= 2048L) {
-            16L
-        } else if (outVecSize >= 512L) {
-            4L
-        } else {
-            2L
-        }
-        val tn = if (outVecSize < 4L) 1L else 4L
-        listOf(1L, bn, sm, sn, 4L, tn)
-    } else {
-        val (bm, bn, sm, sn) = if (inVecSize <= 64L) {
-            listOf(1L, 1L, 8L, 4L)
-        } else if (inVecSize >= 16L * outVecSize) {
-            listOf(1L, 8L, 1L, 32L)
-        } else if (outVecSize >= 4096L) {
-            listOf(8L, 1L, 1L, 32L)
-        } else {
-            listOf(4L, 1L, 1L, 32L)
-        }
-        val tm = if (outVecSize < 4L) 1L else 4L
-        listOf(bm, bn, sm, sn, tm, 4L)
-    }
 
-    val dtypeStr = when (dtype) {
-        GemmDType.F32 -> "float32"
-        GemmDType.F16 -> "float16"
-        GemmDType.BF16 -> "bfloat16"
-    }
+    val matBatchStride: Long =
+        if (isBMatrix) {
+            if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else 0L
+        } else {
+            if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else 0L
+        }
+
+    val tileConfig =
+        if (transposeMat) {
+            val (sm, sn) =
+                if (inVecSize >= 8192L && outVecSize >= 2048L) {
+                    Pair(4L, 8L)
+                } else {
+                    Pair(8L, 4L)
+                }
+            val bn =
+                if (outVecSize >= 2048L) {
+                    16L
+                } else if (outVecSize >= 512L) {
+                    4L
+                } else {
+                    2L
+                }
+            val tn = if (outVecSize < 4L) 1L else 4L
+            GemvTileConfig(1L, bn, sm, sn, 4L, tn)
+        } else {
+            val tConfig =
+                if (inVecSize <= 64L) {
+                    listOf(1L, 1L, 8L, 4L)
+                } else if (inVecSize >= 16L * outVecSize) {
+                    listOf(1L, 8L, 1L, 32L)
+                } else if (outVecSize >= 4096L) {
+                    listOf(8L, 1L, 1L, 32L)
+                } else {
+                    listOf(4L, 1L, 1L, 32L)
+                }
+            val tmVal = if (outVecSize < 4L) 1L else 4L
+            GemvTileConfig(tConfig[0], tConfig[1], tConfig[2], tConfig[3], tmVal, 4L)
+        }
+    val bm = tileConfig.bm
+    val bn = tileConfig.bn
+    val sm = tileConfig.sm
+    val sn = tileConfig.sn
+    val tm = tileConfig.tm
+    val tn = tileConfig.tn
+
+    val dtypeStr =
+        when (dtype) {
+            GemmDType.F32 -> "float32"
+            GemmDType.F16 -> "float16"
+            GemmDType.BF16 -> "bfloat16"
+        }
     val kernelPrefix = if (transposeMat) "gemv_t" else "gemv"
     val name = "${kernelPrefix}_${dtypeStr}_bm${bm}_bn${bn}_sm${sm}_sn${sn}_tm${tm}_tn${tn}_nc0_axpby0"
 
@@ -305,8 +333,8 @@ fun callMlxGemv(
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
     encoder.setComputePipelineState(pipeline)
 
-    setParam(encoder, 0L, Input.withOffset(matBuffer as Buffer, matOffset as Long))
-    setParam(encoder, 1L, Input.withOffset(vecBuffer as Buffer, vecOffset as Long))
+    setParam(encoder, 0L, Input.withOffset(matBuffer, matOffset))
+    setParam(encoder, 1L, Input.withOffset(vecBuffer, vecOffset))
     setParam(encoder, 2L, null)
     setParam(encoder, 3L, Output.new(output))
     setParam(encoder, 4L, inVecSize.toInt())
@@ -383,21 +411,23 @@ fun callMlxGemm(
     val lhsM1 = lhsStride[lhsStride.size - 1]
     val lhsM2 = lhsStride[lhsStride.size - 2]
 
-    val (lda, aTrans) = if ((lhsM1 == 1L || k == 1L) && (lhsM2 == k || m == 1L)) {
-        Pair(k.toInt(), false)
-    } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
-        Pair(m.toInt(), true)
-    } else {
-        throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, Triple(m, n, k)).bt()
-    }
+    val (lda, aTrans) =
+        if ((lhsM1 == 1L || k == 1L) && (lhsM2 == k || m == 1L)) {
+            Pair(k.toInt(), false)
+        } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
+            Pair(m.toInt(), true)
+        } else {
+            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+        }
 
-    val (ldb, bTrans) = if ((rhsM1 == 1L || n == 1L) && (rhsM2 == n || k == 1L)) {
-        Pair(n.toInt(), false)
-    } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
-        Pair(k.toInt(), true)
-    } else {
-        throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, Triple(m, n, k)).bt()
-    }
+    val (ldb, bTrans) =
+        if ((rhsM1 == 1L || n == 1L) && (rhsM2 == n || k == 1L)) {
+            Pair(n.toInt(), false)
+        } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
+            Pair(k.toInt(), true)
+        } else {
+            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+        }
 
     if (m == 1L || n == 1L) {
         return callMlxGemv(
@@ -427,21 +457,33 @@ fun callMlxGemm(
 
     val deviceType = device.deviceType()
     val tile = selectTileConfig(dtype, effM, n, k, effB, aTrans, bTrans, deviceType)
-    val (bm, bn, bk, wm, wn) = listOf(tile.bm, tile.bn, tile.bk, tile.wm, tile.wn)
+    val bm = tile.bm
+    val bn = tile.bn
+    val bk = tile.bk
+    val wm = tile.wm
+    val wn = tile.wn
 
     val hasBatch = effB > 1L
 
-    val constants = ConstantValues.new(
-        listOf(
-            Pair(10L, Value.Bool(hasBatch)),
-            Pair(100L, Value.Bool(false)),
-            Pair(110L, Value.Bool(false)),
-            Pair(200L, Value.Bool(effM % bm == 0L)),
-            Pair(201L, Value.Bool(n % bn == 0L)),
-            Pair(202L, Value.Bool(k % bk == 0L)),
-            Pair(300L, Value.Bool(false)),
+    val constants =
+        ConstantValues.new(
+            listOf(
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(10L, Value.Bool(hasBatch)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(100L, Value.Bool(false)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(110L, Value.Bool(false)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(200L, Value.Bool(effM % bm == 0L)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(201L, Value.Bool(n % bn == 0L)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(202L, Value.Bool(k % bk == 0L)),
+                io.github.kotlinmania.candlemetalkernels.metal
+                    .ConstantValue(300L, Value.Bool(false)),
+            ),
         )
-    )
 
     val swizzleLog = 0
     val tileSwizzle = 1L shl swizzleLog
@@ -450,44 +492,48 @@ fun callMlxGemm(
     tn *= tileSwizzle
     tm = if (tileSwizzle > 0L) (tm + tileSwizzle - 1L) / tileSwizzle else tm
 
-    val (batchStrideA, batchStrideB) = if (batchCollapsed) {
-        Pair(0L, 0L)
-    } else {
-        val aStride = if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else (effM * k)
-        val bStride = if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else (n * k)
-        Pair(aStride, bStride)
-    }
+    val (batchStrideA, batchStrideB) =
+        if (batchCollapsed) {
+            Pair(0L, 0L)
+        } else {
+            val aStride = if (lhsStride.size > 2) lhsStride[lhsStride.size - 3] else (effM * k)
+            val bStride = if (rhsStride.size > 2) rhsStride[rhsStride.size - 3] else (n * k)
+            Pair(aStride, bStride)
+        }
 
-    val gemmParams = GemmParams(
-        m = effM.toInt(),
-        n = n.toInt(),
-        k = k.toInt(),
-        lda = if (batchCollapsed) k.toInt() else lda,
-        ldb = ldb,
-        ldd = n.toInt(),
-        tilesN = tn.toInt(),
-        tilesM = tm.toInt(),
-        batchStrideA = batchStrideA,
-        batchStrideB = batchStrideB,
-        batchStrideD = effM * n,
-        swizzleLog = swizzleLog,
-        gemmKIterationsAligned = (k / bk).toInt(),
-        batchNdim = 1,
-    )
+    val gemmParams =
+        GemmParams(
+            m = effM.toInt(),
+            n = n.toInt(),
+            k = k.toInt(),
+            lda = if (batchCollapsed) k.toInt() else lda,
+            ldb = ldb,
+            ldd = n.toInt(),
+            tilesN = tn.toInt(),
+            tilesM = tm.toInt(),
+            batchStrideA = batchStrideA,
+            batchStrideB = batchStrideB,
+            batchStrideD = effM * n,
+            swizzleLog = swizzleLog,
+            gemmKIterationsAligned = (k / bk).toInt(),
+            batchNdim = 1,
+        )
 
-    val dtypeStr = when (dtype) {
-        GemmDType.F32 -> "f32"
-        GemmDType.F16 -> "f16"
-        GemmDType.BF16 -> "bf16"
-    }
-    val transStr = when (Pair(aTrans, bTrans)) {
-        Pair(false, false) -> "nn"
-        Pair(true, false) -> "tn"
-        Pair(false, true) -> "nt"
-        Pair(true, true) -> "tt"
-        else -> "nn"
-    }
-    val name = "gemm_${transStr}_${dtypeStr}_${dtypeStr}_${bm}_${bn}_${bk}_${wm}_${wn}"
+    val dtypeStr =
+        when (dtype) {
+            GemmDType.F32 -> "f32"
+            GemmDType.F16 -> "f16"
+            GemmDType.BF16 -> "bf16"
+        }
+    val transStr =
+        when (Pair(aTrans, bTrans)) {
+            Pair(false, false) -> "nn"
+            Pair(true, false) -> "tn"
+            Pair(false, true) -> "nt"
+            Pair(true, true) -> "tt"
+            else -> "nn"
+        }
+    val name = "gemm_${transStr}_${dtypeStr}_${dtypeStr}_${bm}_${bn}_${bk}_${wm}_$wn"
 
     val pipeline = kernels.loadPipelineWithConstants(device, Source.Gemm, name, constants)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()

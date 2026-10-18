@@ -1,9 +1,14 @@
 // port-lint: source metal/buffer.rs
 package io.github.kotlinmania.candlemetalkernels.metal
 
-data class NSRange(val location: Long, val length: Long)
+data class NSRange(
+    val location: Long,
+    val length: Long,
+)
 
-data class MTLResourceOptions(val value: ULong) {
+data class MTLResourceOptions(
+    val value: ULong,
+) {
     companion object {
         val StorageModeShared: MTLResourceOptions = MTLResourceOptions(0uL)
         val StorageModePrivate: MTLResourceOptions = MTLResourceOptions(2uL)

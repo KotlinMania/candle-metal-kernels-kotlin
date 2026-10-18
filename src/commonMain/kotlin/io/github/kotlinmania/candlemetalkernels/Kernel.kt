@@ -11,13 +11,19 @@ import io.github.kotlinmania.candlemetalkernels.metal.MTLMathFloatingPointFuncti
 import io.github.kotlinmania.candlemetalkernels.metal.MTLMathMode
 
 sealed class KernelName {
-    data class Ref(val name: String) : KernelName()
-    data class Value(val name: String) : KernelName()
+    data class Ref(
+        val name: String,
+    ) : KernelName()
 
-    fun asRef(): String = when (this) {
-        is Ref -> name
-        is Value -> name
-    }
+    data class Value(
+        val name: String,
+    ) : KernelName()
+
+    fun asRef(): String =
+        when (this) {
+            is Ref -> name
+            is Value -> name
+        }
 
     fun hash(): Int = hashCode()
 
@@ -28,31 +34,32 @@ sealed class KernelName {
     }
 }
 
-typealias Libraries = MutableMap<Source, Library>
-typealias Pipelines = MutableMap<Pair<KernelName, ConstantValues?>, ComputePipeline>
+internal typealias Libraries = MutableMap<Source, Library>
+internal typealias Pipelines = MutableMap<Pair<KernelName, ConstantValues?>, ComputePipeline>
 
-class Kernels(
-    private val libraries: Libraries = mutableMapOf(),
-    private val pipelines: Pipelines = mutableMapOf(),
-) {
-    private fun getLibrarySource(source: Source): String = when (source) {
-        Source.Affine -> AFFINE
-        Source.Binary -> BINARY
-        Source.Cast -> CAST
-        Source.Conv -> CONV
-        Source.Fill -> FILL
-        Source.Gemm -> MLX_GEMM
-        Source.Gemv -> GEMV
-        Source.Indexing -> INDEXING
-        Source.MlxSort -> MLX_SORT
-        Source.Quantized -> QUANTIZED
-        Source.Random -> RANDOM
-        Source.Reduce -> REDUCE
-        Source.Sort -> SORT
-        Source.Ternary -> TERNARY
-        Source.Unary -> UNARY
-        Source.Sdpa -> SDPA
-    }
+class Kernels {
+    private val libraries: Libraries = mutableMapOf()
+    private val pipelines: Pipelines = mutableMapOf()
+
+    private fun getLibrarySource(source: Source): String =
+        when (source) {
+            Source.Affine -> AFFINE
+            Source.Binary -> BINARY
+            Source.Cast -> CAST
+            Source.Conv -> CONV
+            Source.Fill -> FILL
+            Source.Gemm -> MLX_GEMM
+            Source.Gemv -> GEMV
+            Source.Indexing -> INDEXING
+            Source.MlxSort -> MLX_SORT
+            Source.Quantized -> QUANTIZED
+            Source.Random -> RANDOM
+            Source.Reduce -> REDUCE
+            Source.Sort -> SORT
+            Source.Ternary -> TERNARY
+            Source.Unary -> UNARY
+            Source.Sdpa -> SDPA
+        }
 
     fun loadLibrary(device: Device, source: Source): Library {
         val existing = libraries[source]
@@ -110,6 +117,7 @@ class Kernels(
 
     companion object {
         fun default(): Kernels = Kernels()
+
         fun new(): Kernels = Kernels()
     }
 }

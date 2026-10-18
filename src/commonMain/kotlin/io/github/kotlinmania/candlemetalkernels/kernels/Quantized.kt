@@ -71,45 +71,55 @@ fun callQuantizedMatmulMvT(
     val r2 = (ne12 / ne02).toUInt()
     val r3 = (ne13 / ne03).toUInt()
 
-    val (nth0, nth1, align) = when (dtype) {
-        GgmlDType.Q4_0,
-        GgmlDType.Q4_1,
-        GgmlDType.Q5_0,
-        GgmlDType.Q5_1,
-        GgmlDType.Q8_0,
-        GgmlDType.Q8_1 -> Triple(8L, 8L, 8L)
-        GgmlDType.Q2K -> Triple(2L, 32L, 4L)
-        GgmlDType.Q4K -> Triple(4L, 8L, 4L)
-        GgmlDType.Q3K, GgmlDType.Q5K -> Triple(2L, 32L, 4L)
-        GgmlDType.Q6K -> Triple(2L, 32L, 2L)
-        GgmlDType.F16, GgmlDType.BF16, GgmlDType.Q8K -> Triple(32L, 1L, 8L)
-        GgmlDType.F32 -> Triple(32L, 1L, 8L)
-    }
+    val (nth0, nth1, align) =
+        when (dtype) {
+            GgmlDType.Q4_0,
+            GgmlDType.Q4_1,
+            GgmlDType.Q5_0,
+            GgmlDType.Q5_1,
+            GgmlDType.Q8_0,
+            GgmlDType.Q8_1,
+            -> Triple(8L, 8L, 8L)
 
-    val threadGroupsCount = MTLSize(
-        divide(ne01, align),
-        ne11,
-        ne12 * ne13,
-    )
+            GgmlDType.Q2K -> Triple(2L, 32L, 4L)
+
+            GgmlDType.Q4K -> Triple(4L, 8L, 4L)
+
+            GgmlDType.Q3K, GgmlDType.Q5K -> Triple(2L, 32L, 4L)
+
+            GgmlDType.Q6K -> Triple(2L, 32L, 2L)
+
+            GgmlDType.F16, GgmlDType.BF16, GgmlDType.Q8K -> Triple(32L, 1L, 8L)
+
+            GgmlDType.F32 -> Triple(32L, 1L, 8L)
+        }
+
+    val threadGroupsCount =
+        MTLSize(
+            divide(ne01, align),
+            ne11,
+            ne12 * ne13,
+        )
     val threadsPerThreadgroup = MTLSize(nth0, nth1, 1L)
 
-    val name = when (dtype) {
-        GgmlDType.Q4_0 -> "kernel_mul_mv_q4_0_f32"
-        GgmlDType.Q4_1 -> "kernel_mul_mv_q4_1_f32"
-        GgmlDType.Q5_0 -> "kernel_mul_mv_q5_0_f32"
-        GgmlDType.Q5_1 -> "kernel_mul_mv_q5_1_f32"
-        GgmlDType.Q8_0 -> "kernel_mul_mv_q8_0_f32"
-        GgmlDType.Q8_1 -> "kernel_mul_mv_q8_1_f32"
-        GgmlDType.Q2K -> "kernel_mul_mv_q2_K_f32"
-        GgmlDType.Q3K -> "kernel_mul_mv_q3_K_f32"
-        GgmlDType.Q4K -> "kernel_mul_mv_q4_K_f32"
-        GgmlDType.Q5K -> "kernel_mul_mv_q5_K_f32"
-        GgmlDType.Q6K -> "kernel_mul_mv_q6_K_f32"
-        GgmlDType.Q8K -> "kernel_mul_mv_q8_K_f32"
-        GgmlDType.F16 -> "kernel_mul_mv_f16_f32"
-        GgmlDType.BF16 -> "kernel_mul_mv_bf16_f32"
-        GgmlDType.F32 -> "kernel_mul_mv_f32_f32"
-    }
+    val name =
+        when (dtype) {
+            GgmlDType.Q4_0 -> "kernel_mul_mv_q4_0_f32"
+            GgmlDType.Q4_1 -> "kernel_mul_mv_q4_1_f32"
+            GgmlDType.Q5_0 -> "kernel_mul_mv_q5_0_f32"
+            GgmlDType.Q5_1 -> "kernel_mul_mv_q5_1_f32"
+            GgmlDType.Q8_0 -> "kernel_mul_mv_q8_0_f32"
+            GgmlDType.Q8_1 -> "kernel_mul_mv_q8_1_f32"
+            GgmlDType.Q2K -> "kernel_mul_mv_q2_K_f32"
+            GgmlDType.Q3K -> "kernel_mul_mv_q3_K_f32"
+            GgmlDType.Q4K -> "kernel_mul_mv_q4_K_f32"
+            GgmlDType.Q5K -> "kernel_mul_mv_q5_K_f32"
+            GgmlDType.Q6K -> "kernel_mul_mv_q6_K_f32"
+            GgmlDType.Q8K -> "kernel_mul_mv_q8_K_f32"
+            GgmlDType.F16 -> "kernel_mul_mv_f16_f32"
+            GgmlDType.BF16 -> "kernel_mul_mv_bf16_f32"
+            GgmlDType.F32 -> "kernel_mul_mv_f32_f32"
+        }
 
     val pipeline = kernels.loadPipeline(device, Source.Quantized, name)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
@@ -205,29 +215,31 @@ fun callQuantizedMatmulMmT(
     val r2 = (ne12 / ne02).toUInt()
     val r3 = (ne13 / ne03).toUInt()
 
-    val threadGroupsCount = MTLSize(
-        divide(ne11, 32L),
-        divide(ne01, 64L),
-        ne12 * ne13,
-    )
+    val threadGroupsCount =
+        MTLSize(
+            divide(ne11, 32L),
+            divide(ne01, 64L),
+            ne12 * ne13,
+        )
     val threadsPerThreadgroup = MTLSize(128L, 1L, 1L)
-    val name = when (dtype) {
-        GgmlDType.Q4_0 -> "kernel_mul_mm_q4_0_f32"
-        GgmlDType.Q4_1 -> "kernel_mul_mm_q4_1_f32"
-        GgmlDType.Q5_0 -> "kernel_mul_mm_q5_0_f32"
-        GgmlDType.Q5_1 -> "kernel_mul_mm_q5_1_f32"
-        GgmlDType.Q8_0 -> "kernel_mul_mm_q8_0_f32"
-        GgmlDType.Q2K -> "kernel_mul_mm_q2_K_f32"
-        GgmlDType.Q3K -> "kernel_mul_mm_q3_K_f32"
-        GgmlDType.Q4K -> "kernel_mul_mm_q4_K_f32"
-        GgmlDType.Q5K -> "kernel_mul_mm_q5_K_f32"
-        GgmlDType.Q6K -> "kernel_mul_mm_q6_K_f32"
-        GgmlDType.F16 -> "kernel_mul_mm_f16_f32"
-        GgmlDType.BF16 -> "kernel_mul_mm_bf16_f32"
-        GgmlDType.F32 -> "kernel_mul_mm_f32_f32"
-        GgmlDType.Q8_1 -> throw MetalKernelError.UnsupportedDTypeForOp("Q8_1", "qmatmul")
-        GgmlDType.Q8K -> throw MetalKernelError.UnsupportedDTypeForOp("Q8K", "qmatmul")
-    }
+    val name =
+        when (dtype) {
+            GgmlDType.Q4_0 -> "kernel_mul_mm_q4_0_f32"
+            GgmlDType.Q4_1 -> "kernel_mul_mm_q4_1_f32"
+            GgmlDType.Q5_0 -> "kernel_mul_mm_q5_0_f32"
+            GgmlDType.Q5_1 -> "kernel_mul_mm_q5_1_f32"
+            GgmlDType.Q8_0 -> "kernel_mul_mm_q8_0_f32"
+            GgmlDType.Q2K -> "kernel_mul_mm_q2_K_f32"
+            GgmlDType.Q3K -> "kernel_mul_mm_q3_K_f32"
+            GgmlDType.Q4K -> "kernel_mul_mm_q4_K_f32"
+            GgmlDType.Q5K -> "kernel_mul_mm_q5_K_f32"
+            GgmlDType.Q6K -> "kernel_mul_mm_q6_K_f32"
+            GgmlDType.F16 -> "kernel_mul_mm_f16_f32"
+            GgmlDType.BF16 -> "kernel_mul_mm_bf16_f32"
+            GgmlDType.F32 -> "kernel_mul_mm_f32_f32"
+            GgmlDType.Q8_1 -> throw MetalKernelError.UnsupportedDTypeForOp("Q8_1", "qmatmul")
+            GgmlDType.Q8K -> throw MetalKernelError.UnsupportedDTypeForOp("Q8K", "qmatmul")
+        }
 
     val pipeline = kernels.loadPipeline(device, Source.Quantized, name)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()
