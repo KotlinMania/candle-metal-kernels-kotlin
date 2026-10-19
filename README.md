@@ -30,9 +30,13 @@ This crate contains Metal kernels used from candle.
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:candle-metal-kernels-kotlin:0.1.0")
+    implementation("io.github.kotlinmania:candle-metal-kernels-kotlin:0.10.2")
 }
 ```
+
+### Error values
+
+`MetalKernelError` carries a kernel failure without inheriting from a platform exception, so its variants and messages are available in Swift. Kotlin code raises an error with `error.raise()`. After catching an exception, `MetalKernelError.fromException(exception)` returns the original domain error, or `null` for an unrelated exception. The original error and its cause are retained.
 
 ### Building
 
@@ -53,7 +57,7 @@ dependencies {
 
 ### Porting guidelines
 
-See [AGENTS.md](AGENTS.md) and [CLAUDE.md](CLAUDE.md) for translator discipline, port-lint header convention, and Rust → Kotlin idiom mapping.
+See [AGENTS.md](AGENTS.md) for translator discipline, port-lint header convention, and Rust → Kotlin idiom mapping.
 
 ### License
 

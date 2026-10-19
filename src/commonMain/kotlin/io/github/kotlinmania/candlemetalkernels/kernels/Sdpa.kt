@@ -83,21 +83,23 @@ fun callSdpaFull(
 ) {
     val bd = qShape[qShape.size - 1]
     if (bd !in listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L, 512L)) {
-        throw MetalKernelError.SdpaHeadSizeMismatch(
-            variation = "full",
-            got = bd,
-            expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L, 512L),
-        )
+        MetalKernelError
+            .SdpaHeadSizeMismatch(
+                variation = "full",
+                got = bd,
+                expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L, 512L),
+            ).raise()
     }
 
     val config =
         if (bd == 512L) {
             if (itype == SdpaDType.F32) {
-                throw MetalKernelError.SdpaHeadSizeMismatch(
-                    variation = "full (f32 unsupported at head_dim=512)",
-                    got = bd,
-                    expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L),
-                )
+                MetalKernelError
+                    .SdpaHeadSizeMismatch(
+                        variation = "full (f32 unsupported at head_dim=512)",
+                        got = bd,
+                        expected = listOf(32L, 64L, 72L, 80L, 96L, 128L, 256L),
+                    ).raise()
             }
             listOf(8L, 8L, 1L, 1L)
         } else {
@@ -237,47 +239,86 @@ fun callSdpaVector(
 
     val name =
         when (Pair(bk, itype)) {
-            Pair(32L, SdpaDType.F16) -> "sdpa_vector_float16_t_32"
+            Pair(32L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_32"
+            }
 
-            Pair(64L, SdpaDType.F16) -> "sdpa_vector_float16_t_64"
+            Pair(64L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_64"
+            }
 
-            Pair(96L, SdpaDType.F16) -> "sdpa_vector_float16_t_96"
+            Pair(96L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_96"
+            }
 
-            Pair(128L, SdpaDType.F16) -> "sdpa_vector_float16_t_128"
+            Pair(128L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_128"
+            }
 
-            Pair(256L, SdpaDType.F16) -> "sdpa_vector_float16_t_256"
+            Pair(256L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_256"
+            }
 
-            Pair(512L, SdpaDType.F16) -> "sdpa_vector_float16_t_512"
+            Pair(512L, SdpaDType.F16) -> {
+                "sdpa_vector_float16_t_512"
+            }
 
-            Pair(32L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_32"
+            Pair(32L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_32"
+            }
 
-            Pair(64L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_64"
+            Pair(64L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_64"
+            }
 
-            Pair(96L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_96"
+            Pair(96L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_96"
+            }
 
-            Pair(128L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_128"
+            Pair(128L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_128"
+            }
 
-            Pair(256L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_256"
+            Pair(256L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_256"
+            }
 
-            Pair(512L, SdpaDType.BF16) -> "sdpa_vector_bfloat16_t_512"
+            Pair(512L, SdpaDType.BF16) -> {
+                "sdpa_vector_bfloat16_t_512"
+            }
 
-            Pair(32L, SdpaDType.F32) -> "sdpa_vector_float_32"
+            Pair(32L, SdpaDType.F32) -> {
+                "sdpa_vector_float_32"
+            }
 
-            Pair(64L, SdpaDType.F32) -> "sdpa_vector_float_64"
+            Pair(64L, SdpaDType.F32) -> {
+                "sdpa_vector_float_64"
+            }
 
-            Pair(96L, SdpaDType.F32) -> "sdpa_vector_float_96"
+            Pair(96L, SdpaDType.F32) -> {
+                "sdpa_vector_float_96"
+            }
 
-            Pair(128L, SdpaDType.F32) -> "sdpa_vector_float_128"
+            Pair(128L, SdpaDType.F32) -> {
+                "sdpa_vector_float_128"
+            }
 
-            Pair(256L, SdpaDType.F32) -> "sdpa_vector_float_256"
+            Pair(256L, SdpaDType.F32) -> {
+                "sdpa_vector_float_256"
+            }
 
-            Pair(512L, SdpaDType.F32) -> "sdpa_vector_float_512"
+            Pair(512L, SdpaDType.F32) -> {
+                "sdpa_vector_float_512"
+            }
 
-            else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-                variation = "vector",
-                got = bk,
-                expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-            )
+            else -> {
+                MetalKernelError
+                    .SdpaHeadSizeMismatch(
+                        variation = "vector",
+                        got = bk,
+                        expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+                    ).raise()
+            }
         }
 
     val effectiveAlpha =
@@ -345,47 +386,86 @@ fun callSdpaVector2pass(
     run {
         val namePass1 =
             when (Pair(bk, itype)) {
-                Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_32"
+                Pair(32L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_32"
+                }
 
-                Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_64"
+                Pair(64L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_64"
+                }
 
-                Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_96"
+                Pair(96L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_96"
+                }
 
-                Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_128"
+                Pair(128L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_128"
+                }
 
-                Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_256"
+                Pair(256L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_256"
+                }
 
-                Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_1_float16_t_512"
+                Pair(512L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_1_float16_t_512"
+                }
 
-                Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_32"
+                Pair(32L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_32"
+                }
 
-                Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_64"
+                Pair(64L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_64"
+                }
 
-                Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_96"
+                Pair(96L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_96"
+                }
 
-                Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_128"
+                Pair(128L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_128"
+                }
 
-                Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_256"
+                Pair(256L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_256"
+                }
 
-                Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_1_bfloat16_t_512"
+                Pair(512L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_1_bfloat16_t_512"
+                }
 
-                Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_32"
+                Pair(32L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_32"
+                }
 
-                Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_64"
+                Pair(64L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_64"
+                }
 
-                Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_96"
+                Pair(96L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_96"
+                }
 
-                Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_128"
+                Pair(128L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_128"
+                }
 
-                Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_256"
+                Pair(256L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_256"
+                }
 
-                Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_1_float_512"
+                Pair(512L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_1_float_512"
+                }
 
-                else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-                    variation = "vector_2pass_1",
-                    got = bk,
-                    expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-                )
+                else -> {
+                    MetalKernelError
+                        .SdpaHeadSizeMismatch(
+                            variation = "vector_2pass_1",
+                            got = bk,
+                            expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+                        ).raise()
+                }
             }
 
         val gqaFactor = (qShape[1] / kShape[1]).toInt()
@@ -436,47 +516,86 @@ fun callSdpaVector2pass(
     run {
         val namePass2 =
             when (Pair(bk, itype)) {
-                Pair(32L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_32"
+                Pair(32L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_32"
+                }
 
-                Pair(64L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_64"
+                Pair(64L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_64"
+                }
 
-                Pair(96L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_96"
+                Pair(96L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_96"
+                }
 
-                Pair(128L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_128"
+                Pair(128L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_128"
+                }
 
-                Pair(256L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_256"
+                Pair(256L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_256"
+                }
 
-                Pair(512L, SdpaDType.F16) -> "sdpa_vector_2pass_2_float16_t_512"
+                Pair(512L, SdpaDType.F16) -> {
+                    "sdpa_vector_2pass_2_float16_t_512"
+                }
 
-                Pair(32L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_32"
+                Pair(32L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_32"
+                }
 
-                Pair(64L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_64"
+                Pair(64L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_64"
+                }
 
-                Pair(96L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_96"
+                Pair(96L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_96"
+                }
 
-                Pair(128L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_128"
+                Pair(128L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_128"
+                }
 
-                Pair(256L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_256"
+                Pair(256L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_256"
+                }
 
-                Pair(512L, SdpaDType.BF16) -> "sdpa_vector_2pass_2_bfloat16_t_512"
+                Pair(512L, SdpaDType.BF16) -> {
+                    "sdpa_vector_2pass_2_bfloat16_t_512"
+                }
 
-                Pair(32L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_32"
+                Pair(32L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_32"
+                }
 
-                Pair(64L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_64"
+                Pair(64L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_64"
+                }
 
-                Pair(96L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_96"
+                Pair(96L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_96"
+                }
 
-                Pair(128L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_128"
+                Pair(128L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_128"
+                }
 
-                Pair(256L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_256"
+                Pair(256L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_256"
+                }
 
-                Pair(512L, SdpaDType.F32) -> "sdpa_vector_2pass_2_float_512"
+                Pair(512L, SdpaDType.F32) -> {
+                    "sdpa_vector_2pass_2_float_512"
+                }
 
-                else -> throw MetalKernelError.SdpaHeadSizeMismatch(
-                    variation = "vector_2pass_2",
-                    got = bk,
-                    expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
-                )
+                else -> {
+                    MetalKernelError
+                        .SdpaHeadSizeMismatch(
+                            variation = "vector_2pass_2",
+                            got = bk,
+                            expected = listOf(32L, 64L, 96L, 128L, 256L, 512L),
+                        ).raise()
+                }
             }
 
         val b = qShape[0] * qShape[1]

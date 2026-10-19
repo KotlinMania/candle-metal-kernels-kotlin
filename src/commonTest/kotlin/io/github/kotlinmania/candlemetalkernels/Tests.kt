@@ -66,6 +66,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
+import kotlin.test.assertIs
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
 
@@ -633,7 +634,7 @@ class Tests {
             outputBuf,
         )
 
-        assertFailsWith<MetalKernelError.LoadLibraryError> {
+        assertMetalKernelError<MetalKernelError.LoadLibraryError> {
             callRandomUniform(
                 device,
                 encoder,
@@ -902,7 +903,7 @@ class Tests {
             dstBuf,
         )
 
-        assertFailsWith<MetalKernelError.UnsupportedDTypeForOp> {
+        assertMetalKernelError<MetalKernelError.UnsupportedDTypeForOp> {
             callQuantizedMatmulMmT(
                 device,
                 encoder,
@@ -1069,7 +1070,7 @@ class Tests {
             SdpaDType.F32,
         )
 
-        assertFailsWith<MetalKernelError.SdpaHeadSizeMismatch> {
+        assertMetalKernelError<MetalKernelError.SdpaHeadSizeMismatch> {
             callSdpaFull(
                 device,
                 encoder,
@@ -1098,4 +1099,9 @@ class Tests {
 
         commands.waitUntilCompleted()
     }
+}
+
+private inline fun <reified T : MetalKernelError> assertMetalKernelError(block: () -> Unit): T {
+    val failure = assertFailsWith<MetalKernelException>(block = block)
+    return assertIs<T>(failure.error)
 }

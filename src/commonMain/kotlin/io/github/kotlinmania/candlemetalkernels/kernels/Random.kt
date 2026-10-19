@@ -24,7 +24,7 @@ fun callRandomUniform(
     buffer: Buffer,
 ) {
     if (min >= max) {
-        throw MetalKernelError.LoadLibraryError("min must be less than max")
+        MetalKernelError.LoadLibraryError("min must be less than max").raise()
     }
     val pipeline = kernels.loadPipeline(device, Source.Random, name)
     val encoder: ComputeCommandEncoder = ep.encoder().asRef()

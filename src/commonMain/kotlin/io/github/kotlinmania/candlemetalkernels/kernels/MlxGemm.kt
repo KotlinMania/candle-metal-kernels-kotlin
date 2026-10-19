@@ -244,7 +244,7 @@ fun callMlxGemv(
         } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
             Pair(m.toInt(), true)
         } else {
-            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+            MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt().raise()
         }
 
     val (ldb, bTrans) =
@@ -253,7 +253,7 @@ fun callMlxGemv(
         } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
             Pair(k.toInt(), true)
         } else {
-            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+            MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt().raise()
         }
 
     val isBMatrix = n != 1L
@@ -417,7 +417,7 @@ fun callMlxGemm(
         } else if ((lhsM1 == m || k == 1L) && (lhsM2 == 1L || m == 1L)) {
             Pair(m.toInt(), true)
         } else {
-            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+            MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt().raise()
         }
 
     val (ldb, bTrans) =
@@ -426,7 +426,7 @@ fun callMlxGemm(
         } else if ((rhsM1 == k || n == 1L) && (rhsM2 == 1L || k == 1L)) {
             Pair(k.toInt(), true)
         } else {
-            throw MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt()
+            MetalKernelError.MatMulNonContiguous(lhsStride, rhsStride, MetalKernelError.Mnk(m, n, k)).bt().raise()
         }
 
     if (m == 1L || n == 1L) {

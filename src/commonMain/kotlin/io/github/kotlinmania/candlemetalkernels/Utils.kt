@@ -131,7 +131,7 @@ class CommandsGuardProvider(
     override fun encoder(): ComputeCommandEncoder = guard.asRef()
 }
 
-class RwLockGuard<T>(
+class RwLockGuard<out T>(
     val targetVal: T,
 ) {
     fun deref(): T = targetVal
