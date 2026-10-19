@@ -30,7 +30,7 @@ This crate contains Metal kernels used from candle.
 
 ```kotlin
 dependencies {
-    implementation("io.github.kotlinmania:candle-metal-kernels-kotlin:0.1.0")
+    implementation("io.github.kotlinmania:candle-metal-kernels-kotlin:0.10.2")
 }
 ```
 
