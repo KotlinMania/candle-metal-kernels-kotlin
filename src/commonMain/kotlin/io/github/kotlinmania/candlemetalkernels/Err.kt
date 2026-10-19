@@ -4,9 +4,9 @@ package io.github.kotlinmania.candlemetalkernels
 import io.github.kotlinmania.candlemetalkernels.kernels.SdpaDType
 
 sealed class MetalKernelError(
-    message: String? = null,
-    cause: Throwable? = null,
-) : Exception(message, cause) {
+    val message: String? = null,
+    val cause: MetalKernelError? = null,
+) {
     data class CommandBufferError(
         val error: String,
     ) : MetalKernelError("Command buffer had following error: $error")
@@ -72,7 +72,17 @@ sealed class MetalKernelError(
 
     fun bt(): MetalKernelError = this
 
+    fun raise(): Nothing = throw MetalKernelException(this)
+
     companion object {
-        fun from(e: Throwable): MetalKernelError = LockError(e.message ?: "Lock error")
+        fun fromException(exception: Any?): MetalKernelError? = (exception as? MetalKernelException)?.error
+
+        fun from(message: String): MetalKernelError = LockError(message)
+
+        internal fun from(e: Throwable): MetalKernelError = from(e.message ?: "Lock error")
     }
 }
+
+internal class MetalKernelException(
+    val error: MetalKernelError,
+) : Exception(error.message, error.cause?.let { MetalKernelException(it) })

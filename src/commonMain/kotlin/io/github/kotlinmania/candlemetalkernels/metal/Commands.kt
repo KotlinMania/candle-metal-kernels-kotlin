@@ -192,7 +192,7 @@ class Commands(
 
             MTLCommandBufferStatus.Error -> {
                 val msg = cb.error() ?: "unknown error"
-                throw MetalKernelError.CommandBufferError(msg)
+                MetalKernelError.CommandBufferError(msg).raise()
             }
         }
     }

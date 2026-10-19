@@ -237,8 +237,8 @@ fun callQuantizedMatmulMmT(
             GgmlDType.F16 -> "kernel_mul_mm_f16_f32"
             GgmlDType.BF16 -> "kernel_mul_mm_bf16_f32"
             GgmlDType.F32 -> "kernel_mul_mm_f32_f32"
-            GgmlDType.Q8_1 -> throw MetalKernelError.UnsupportedDTypeForOp("Q8_1", "qmatmul")
-            GgmlDType.Q8K -> throw MetalKernelError.UnsupportedDTypeForOp("Q8K", "qmatmul")
+            GgmlDType.Q8_1 -> MetalKernelError.UnsupportedDTypeForOp("Q8_1", "qmatmul").raise()
+            GgmlDType.Q8K -> MetalKernelError.UnsupportedDTypeForOp("Q8K", "qmatmul").raise()
         }
 
     val pipeline = kernels.loadPipeline(device, Source.Quantized, name)

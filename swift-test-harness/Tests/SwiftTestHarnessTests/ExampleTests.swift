@@ -11,6 +11,8 @@ struct CandleMetalKernelsExportTests {
         let library = kernels.loadLibrary(device: device, source: .Affine)
         #expect(library.sourceVal == AFFINE)
         #expect(!library.sourceVal.isEmpty)
+        let error = MetalKernelError.InvalidInput(error: "missing dimensions")
+        #expect(error.message == "Invalid input: missing dimensions")
     }
 }
 #elseif canImport(XCTest)
@@ -24,6 +26,8 @@ final class CandleMetalKernelsExportTests: XCTestCase {
         let library = kernels.loadLibrary(device: device, source: .Affine)
         XCTAssertEqual(library.sourceVal, AFFINE)
         XCTAssertFalse(library.sourceVal.isEmpty)
+        let error = MetalKernelError.InvalidInput(error: "missing dimensions")
+        XCTAssertEqual(error.message, "Invalid input: missing dimensions")
     }
 }
 #endif
